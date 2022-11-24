@@ -1,0 +1,64 @@
+{{- if eq .Values.ingresspath.type "traefik" -}}
+{{- $fullName := include "streams-browser.fullname" . -}}
+{{- $svcPort := .Values.service.port -}}
+{{- $ingressPath :=  $fullName  -}}
+{{- if .Values.ingresspath.path -}}
+{{-  $ingressPath =  .Values.ingresspath.path -}}
+{{- end -}}
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ $fullName }}
+  labels:
+    {{- include "streams-browser.labels" . | nindent 4 }}
+  annotations:
+    kubernetes.io/ingress.class: "traefik"
+    traefik.ingress.kubernetes.io/router.middlewares: >
+      {{ .Release.Namespace }}-{{ $fullName }}-stripprefix@kubernetescrd
+      {{- if .Values.ingresspath.basicauthsecret }}
+      ,{{ .Release.Namespace }}-{{ $fullName }}-auth@kubernetescrd
+      {{- end }}
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    kubernetes.io/ingress.class: traefik
+spec:
+  rules:
+  - http:
+      paths:
+      - path: /{{ $ingressPath }}/
+        pathType: Prefix
+        backend:
+          service:
+            name: {{ $fullName }}
+            port:
+              number: {{ $svcPort }}
+{{- if .Values.ingresspath.dnsname }}
+    host: {{ .Values.ingresspath.dnsname }}
+{{- end }}
+---
+apiVersion: traefik.containo.us/v1alpha1
+kind: Middleware
+metadata:
+  name: {{ $fullName }}-stripprefix
+spec:
+#  stripPrefixRegex:
+#    regex:
+#      - "/[-_A-Za-z0-9]+"
+  stripPrefix:
+    prefixes:
+      - /{{ $ingressPath }}/
+{{- if .Values.ingresspath.basicauthsecret }}
+---
+apiVersion: traefik.containo.us/v1alpha1
+kind: Middleware
+metadata:
+  name: {{ $fullName }}-auth
+spec:
+  basicAuth:
+    removeHeader: true
+    realm: Accessing {{ $ingressPath }}
+    headerField: X-Auth-User
+    secret: {{ .Values.ingresspath.basicauthsecret}}
+{{- end }}
+
+{{- end }}

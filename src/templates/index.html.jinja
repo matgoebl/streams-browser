@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block title %}Home{% endblock %}
+
+{% block content %}
+
+<h2>Search</h2>
+<form method="GET" action="{{ url_for('index') }}">
+<table>
+ <tr><th align=right> Stream:</th><td>
+  <select name="streamname">
+   {% for streamname in streamnames %}
+    <option value="{{streamname}}"
+     {% if (streamname == args.streamname) %}
+      selected="selected"
+     {% endif %} >
+     {{streamname}}
+    </option>
+   {% endfor %}
+  </select>
+ </td></tr>
+
+ <tr><th align=right valign=top> Offset/Time: </th><td class="tooltip"> <input type=input name=offset size='50' value='{{ args.offset }}'>
+  <div class="tooltiptext">
+   <li>...
+  </div>
+  </td></tr>
+
+ <tr><th>   </th><td> <input type=submit value='Seek'> </td></tr>
+</table>
+</form>
+
+<script>
+$('form').keydown(function(event) {
+ if (event.ctrlKey && event.keyCode === 13) {
+  $(this).trigger('submit');
+ }
+})
+
+$('form').submit(function(event) {
+ if ( $('[name="query"]').val().length > 1000 ) {
+  $("form").attr("method","POST");
+ }
+});
+
+$('[name="query"]').focus();
+</script>
+
+{% if args.offset %}
+
+ <h2>Results for {{ args.offset | e}} </h2>
+  <table class="results">
+    <tr><th>Offset</th><th>Message</th></tr>
+  {% for id in results %}
+    {% set item = id %}
+    <tr>
+     <td>{{ item[0] }}</td>
+     <td>{{ item[1] }}</td>
+   </tr>
+  {% endfor %}
+  </table>
+
+{% endif %}
+
+{% endblock content %}
